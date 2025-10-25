@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>手机陀螺仪方向检测</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    .permission-btn {
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 20px 0;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+
+    .orientation-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 30px;
+    }
+
+    .compass {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background-color: #f0f0f0;
+      position: relative;
+      margin: 20px auto;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .compass-arrow {
+      position: absolute;
+      top: 10px;
+      left: 90px;
+      width: 20px;
+      height: 80px;
+      background-color: red;
+      clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+      transform-origin: 50% 100%;
+      transition: transform 0.1s ease-out;
+    }
+
+    .data-display {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-top: 30px;
+      width: 100%;
+    }
+
+    .data-item {
+      background-color: #f9f9f9;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .data-value {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 10px 0;
+      color: #2c3e50;
+    }
+
+    .cube-container {
+      perspective: 1000px;
+      margin: 40px auto;
+      width: 150px;
+      height: 150px;
+    }
+
+    .cube {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.1s ease-out;
+    }
+
+    .cube-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border: 2px solid #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: bold;
+      opacity: 0.8;
+    }
+
+    .front {
+      background-color: #e74c3c;
+      transform: translateZ(75px);
+    }
+
+    .back {
+      background-color: #3498db;
+      transform: rotateY(180deg) translateZ(75px);
+    }
+
+    .right {
+      background-color: #2ecc71;
+      transform: rotateY(90deg) translateZ(75px);
+    }
+
+    .left {
+      background-color: #f1c40f;
+      transform: rotateY(-90deg) translateZ(75px);
+    }
+
+    .top {
+      background-color: #9b59b6;
+      transform: rotateX(90deg) translateZ(75px);
+    }
+
+    .bottom {
+      background-color: #1abc9c;
+      transform: rotateX(-90deg) translateZ(75px);
+    }
+
+    .not-supported {
+      color: #e74c3c;
+      font-weight: bold;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>手机陀螺仪方向检测</h1>
+
+  <div id="permission-section">
+    <p>此演示需要访问您的设备陀螺仪数据</p>
+    <button id="request-permission" class="permission-btn">请求陀螺仪权限</button>
+  </div>
+
+  <div id="content" style="display: none;">
+    <div class="orientation-container">
+      <h2>指南针方向</h2>
+      <div class="compass">
+        <div class="compass-arrow" id="compass-arrow"></div>
+      </div>
+
+      <div class="data-display">
+        <div class="data-item">
+          <div>Z轴旋转 (alpha)</div>
+          <div class="data-value" id="alpha-value">0</div>
+          <div>0° - 360°</div>
+        </div>
+        <div class="data-item">
+          <div>X轴旋转 (beta)</div>
+          <div class="data-value" id="beta-value">0</div>
+          <div>-180° - 180°</div>
+        </div>
+        <div class="data-item">
+          <div>Y轴旋转 (gamma)</div>
+          <div class="data-value" id="gamma-value">0</div>
+          <div>-90° - 90°</div>
+        </div>
+      </div>
+
+      <h2>3D方向可视化</h2>
+      <div class="cube-container">
+        <div class="cube" id="cube">
+          <div class="cube-face front">前</div>
+          <div class="cube-face back">后</div>
+          <div class="cube-face right">右</div>
+          <div class="cube-face left">左</div>
+          <div class="cube-face top">上</div>
+          <div class="cube-face bottom">下</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="not-supported" class="not-supported" style="display: none;">
+    您的设备或浏览器不支持陀螺仪功能
+  </div>
+
+  <script>
+    // 检测设备是否支持陀螺仪
+    if (!window.DeviceOrientationEvent) {
+      document.getElementById('not-supported').style.display = 'block';
+      document.getElementById('permission-section').style.display = 'none';
+    }
+
+    // 请求权限按钮点击事件
+    document.getElementById('request-permission').addEventListener('click', function () {
+      requestOrientationPermission();
+    });
+
+    // 请求陀螺仪权限
+    function requestOrientationPermission() {
+      // iOS 13+需要明确请求权限
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+
+        DeviceOrientationEvent.requestPermission()
+          .then(response => {
+            alert(response)
+            if (response === 'granted') {
+              startOrientationDetection();
+            } else {
+              alert('需要陀螺仪权限才能使用此功能');
+            }
+          })
+          .catch(console.error);
+      } else {
+        // 其他设备直接开始检测
+        startOrientationDetection();
+      }
+    }
+
+    // 开始陀螺仪检测
+    function startOrientationDetection() {
+      document.getElementById('permission-section').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+
+      // 添加陀螺仪事件监听
+      window.addEventListener('deviceorientation', handleOrientation);
+    }
+
+    // 处理陀螺仪数据
+    function handleOrientation(event) {
+      // 获取三个轴向的旋转角度
+      const alpha = event.alpha; // z轴旋转 (指南针方向)
+      const beta = event.beta;   // x轴旋转 (前后倾斜)
+      const gamma = event.gamma; // y轴旋转 (左右倾斜)
+
+      // 更新数据显示
+      document.getElementById('alpha-value').textContent = alpha !== null ? alpha.toFixed(1) : 'N/A';
+      document.getElementById('beta-value').textContent = beta !== null ? beta.toFixed(1) : 'N/A';
+      document.getElementById('gamma-value').textContent = gamma !== null ? gamma.toFixed(1) : 'N/A';
+
+      // 更新指南针方向
+      if (alpha !== null) {
+        document.getElementById('compass-arrow').style.transform = `rotate(${alpha}deg)`;
+      }
+
+      // 更新3D立方体方向
+      if (beta !== null && gamma !== null) {
+        const cube = document.getElementById('cube');
+        // 调整旋转顺序和角度以适应自然感觉
+        cube.style.transform = `
+                    rotateZ(${-alpha || 0}deg) 
+                    rotateX(${beta}deg) 
+                    rotateY(${-gamma}deg)
+                `;
+      }
+    }
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Three.js 光照响应物体</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+
+    #info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-family: Arial, sans-serif;
+    }
+
+    #start-btn {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 20px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="info">点击下方按钮开始检测环境光</div>
+  <button id="start-btn">开始光照检测</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+  <script>
+    // 场景设置
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // 添加物体
+    const geometry = new THREE.SphereGeometry(1, 32, 32);
+    const material = new THREE.MeshPhongMaterial({
+      color: 0x00ff00,
+      emissive: 0x003300,
+      specular: 0x555555,
+      shininess: 30
+    });
+    const sphere = new THREE.Mesh(geometry, material);
+    scene.add(sphere);
+
+    // 添加光源
+    const ambientLight = new THREE.AmbientLight(0x404040);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    directionalLight.position.set(1, 1, 1);
+    scene.add(directionalLight);
+
+    // 相机位置
+    camera.position.z = 5;
+
+    // 光照检测变量
+    let brightness = 0.5; // 默认值 (0-1)
+    let stream = null;
+    let video = document.createElement('video');
+    let canvas = document.createElement('canvas');
+    let ctx = canvas.getContext('2d');
+
+    // 开始光照检测
+    document.getElementById('start-btn').addEventListener('click', async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        video.play();
+        document.getElementById('info').textContent = "光照检测中...";
+        document.getElementById('start-btn').style.display = 'none';
+      } catch (err) {
+        document.getElementById('info').textContent = "摄像头访问被拒绝: " + err.message;
+      }
+    });
+
+    // 窗口大小调整
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // 动画循环
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // 如果摄像头可用，检测亮度
+      if (stream && video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        let totalBrightness = 0;
+
+        for (let i = 0; i < imageData.data.length; i += 4) {
+          // 简单的亮度计算 (RGB平均值)
+          totalBrightness += (imageData.data[i] + imageData.data[i + 1] + imageData.data[i + 2]) / 3;
+        }
+
+        brightness = (totalBrightness / (imageData.data.length / 4)) / 255;
+
+        // 更新物体大小和亮度
+        updateObjectProperties();
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    // 根据亮度更新物体属性
+    function updateObjectProperties() {
+      // 物体大小 (0.5 - 2.0)
+      const scale = 0.5 + brightness * 1.5;
+      sphere.scale.set(scale, scale, scale);
+
+      // 物体亮度 (颜色和自发光)
+      const hue = 0.3; // 绿色色调
+      const saturation = 1.0;
+      const value = 0.5 + brightness * 0.5; // 0.5-1.0
+
+      // 转换为RGB
+      const color = new THREE.Color();
+      color.setHSL(hue, saturation, value);
+      sphere.material.color.copy(color);
+
+      // 自发光效果 (暗环境下更明显)
+      const emissiveIntensity = brightness < 0.3 ? (0.3 - brightness) * 2 : 0;
+      sphere.material.emissive.setHSL(hue, saturation, emissiveIntensity);
+
+      // 更新信息显示
+      document.getElementById('info').textContent =
+        `环境亮度: ${(brightness * 100).toFixed(1)}% | ` +
+        `物体大小: ${scale.toFixed(2)} | ` +
+        `亮度: ${value.toFixed(2)}`;
+    }
+
+    animate();
+  </script>
+</body>
+
+</html>
