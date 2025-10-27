@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手电筒亮光方向检测</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 楷体;
+            color: white;
+            background-color: black;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .video-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        #video {
+            display: block;
+            border: 2px solid #333;
+            width: 400px;
+            height: 640px;
+            transform: scaleX(-1);
+        }
+
+        #canvas {
+            width: 400px;
+            height: 640px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        #debug {
+            margin-top: 10px;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>ios26光源追踪模拟</h1>
+        <div class="video-container">
+            <video id="video" autoplay style="opacity: 0;"></video>
+            <canvas id="canvas"></canvas>
+        </div>
+        <div id="debug">等待检测...</div>
+        <button id="startBtn">开始检测</button>
+    </div>
+    <!-- <script defer type="module" src="./ios26光源追踪.js"> </script> -->
+    <script defer type="module" src="./ios26光源追踪2.js"> </script>
+
+</body>
+
+</html>
